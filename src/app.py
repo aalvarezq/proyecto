@@ -7,7 +7,7 @@ import streamlit as st
 # 1. Configuración inicial
 # --------------------------------------------------------------------------
 st.set_page_config(page_title="Predicción de Ruido Aeronáutico (LASmax)", layout="wide")
-st.title("✈️ Predicción de Nivel de Ruido Aeronáutico (LASmax)")
+st.title("✈️ Predicción de Nivel de Ruido Aeronáutico (LASmax) en zona Jardines del sur.")
 st.markdown("Complete los datos del vuelo para obtener la estimación de ruido.")
 
 # --------------------------------------------------------------------------
@@ -31,7 +31,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     hour = st.slider("Hora (0-23)", 0, 23, 14)
-    temp = st.number_input("Temperatura (°C)", value=20.0, step=0.1)
+    temp = st.number_input("Temperatura (°C)", value=20, step=1)
     day_of_week = st.selectbox("Día de la semana", 
                              ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"])
 
@@ -119,5 +119,4 @@ st.markdown("""
 **Notas:**
 - El modelo predice el nivel máximo de ruido (LASmax) en decibelios (dB).
 - Se aplica un ajuste de **+10 dB** para vuelos entre **22:00 y 7:00**.
-- Los valores categóricos deben coincidir exactamente con los usados en el entrenamiento.
 """)
