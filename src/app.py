@@ -3,30 +3,26 @@ import joblib
 import pandas as pd
 import streamlit as st
 
-# --------------------------------------------------------------------------
 # 1. Configuración inicial
-# --------------------------------------------------------------------------
 st.set_page_config(page_title="Predicción de Ruido Aeronáutico (LASmax)", layout="wide")
 st.title("✈️ Predicción de Nivel de Ruido Aeronáutico (LASmax) en zona Jardines del sur.")
 st.markdown("Complete los datos del vuelo para obtener la estimación de ruido.")
 
-# --------------------------------------------------------------------------
 # 2. Cargar modelo y mapeos
-# --------------------------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
-    model = joblib.load("models/best_xgb_843_47")  # Asegúrate de que el archivo exista
+    model = joblib.load("models/best_xgb_843_47")  
     with open("data/interim/categorical_mappings.json") as f:
         mappings = json.load(f)
     with open("data/interim/feature_order.json") as f:
         feature_order = json.load(f)
-    return model, mappings, feature_order
+    aerodic = pd.read_csv("data/processed/aerolineas.csv")  
+    airline_name_to_code = dict(zip(aerodic['Airline (Name)'], aerodic['Airline']))
+    return model, mappings, feature_order, airline_name_to_code
 
-model, mappings, FEATURE_ORDER = load_artifacts()
+model, mappings, FEATURE_ORDER, airline_name_to_code = load_artifacts()
 
-# --------------------------------------------------------------------------
 # 3. Interfaz de usuario
-# --------------------------------------------------------------------------
 col1, col2 = st.columns(2)
 
 with col1:
@@ -38,13 +34,11 @@ with col1:
 with col2:
     ad = st.selectbox("Arribo/Despegue (A/D)", options=list(mappings["A/D"].keys()))
     runway = st.selectbox("Pista", options=list(mappings["Runway"].keys()))
-    airline = st.selectbox("Aerolínea", options=list(mappings["Airline"].keys()))
+    airline_name = st.selectbox("Aerolínea", options=list(airline_name_to_code.keys()))  # <-- Mostrar nombres bonitos
     aircraft_type = st.selectbox("Tipo de Aeronave", options=list(mappings["Aircraft Type"].keys()))
     from_to = st.selectbox("Origen/Destino (From/To)", options=list(mappings["From/To"].keys()))
 
-# --------------------------------------------------------------------------
 # 4. Construcción del vector de entrada (con validación robusta)
-# --------------------------------------------------------------------------
 def build_vector():
     # Mapeo de días a números
     day_map = {
@@ -66,19 +60,17 @@ def build_vector():
         "Temp": temp,
         "A/D": get_mapped_code("A/D", ad),
         "Runway": get_mapped_code("Runway", runway),
-        "Airline": get_mapped_code("Airline", airline),
+        "Airline": get_mapped_code("Airline", airline_name_to_code[airline_name]),
         "From/To": get_mapped_code("From/To", from_to),
         "Aircraft Type": get_mapped_code("Aircraft Type", aircraft_type),
-        "is_night": int(hour >= 22 or hour < 7)  # 1 si es horario nocturno (22:00-7:00)
+        "is_night": int(hour >= 22 or hour < 7)  # si es horario nocturno (22:00-7:00)
     }
     
     # Convierte a DataFrame y asegura el orden correcto
     df = pd.DataFrame([vector])
     return df[FEATURE_ORDER], vector["is_night"]
 
-# --------------------------------------------------------------------------
 # 5. Predicción y resultados
-# --------------------------------------------------------------------------
 if st.button("Calcular Nivel de Ruido"):
     X_pred, is_night = build_vector()
     pred = model.predict(X_pred)[0]
@@ -93,8 +85,8 @@ if st.button("Calcular Nivel de Ruido"):
     - Ajuste nocturno (+10 dB): **{pred_ajustado:.1f} dB LASmax** {"(Aplicado)" if is_night else ""}
     """)
     
-    # Detalles técnicos (opcional)
-    with st.expander("🔍 Ver detalles técnicos"):
+    # Detalles técnicos . Esta porque tenia problemas con las variables cero
+    with st.expander(" Ver detalles técnicos"):
         st.write("**Variables de entrada:**")
         st.json({
             "Hora": hour,
@@ -102,7 +94,7 @@ if st.button("Calcular Nivel de Ruido"):
             "Temperatura (°C)": temp,
             "A/D": ad,
             "Pista": runway,
-            "Aerolínea": airline,
+            "Aerolínea": airline_name,
             "Origen/Destino": from_to,
             "Tipo de Aeronave": aircraft_type,
             "Horario Nocturno": "Sí" if is_night else "No"
