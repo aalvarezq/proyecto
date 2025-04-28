@@ -99,7 +99,7 @@ if st.button("Calcular Nivel de Ruido"):
             "Hora": hour,
             "Día de la semana": day_of_week,
             "Temperatura (°C)": temp,
-            "A/D": ad,
+            "A/D": ad_display,
             "Pista": runway,
             "Aerolínea": airline_name,
             "Origen/Destino": from_to,
